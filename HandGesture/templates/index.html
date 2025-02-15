@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasty Bites - Gesture-Controlled Ordering</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #ffefd5;
+            padding: 20px;
+            color: #333;
+        }
+        nav {
+            background: #ff4500;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            overflow-y: auto;
+            height: 400px;
+            padding: 10px;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            background: #fff;
+        }
+        .card {
+            width: 80%;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            background: #fff;
+        }
+        .card img {
+            width: 100%;
+            border-radius: 10px;
+        }
+        .card h3 { color: #444; margin: 10px 0; }
+        .card p { color: #888; }
+        .card.active {
+            transform: scale(1.05);
+            box-shadow: 4px 4px 15px rgba(0,0,0,0.2);
+            background: #ffdab9;
+        }
+        .card a {
+            display: block;
+            text-decoration: none;
+            color: #ff4500;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact Us</a>
+    </nav>
+    <h1>Welcome to Tasty Bites!</h1>
+    <video id="webcam" autoplay playsinline style="display:none;"></video>
+    <div class="container" id="foodContainer">
+        <div class="card" id="item-0">
+            <img src="pizza.jpg" alt="Pizza">
+            <h3>Pizza</h3>
+            <p>$10</p>
+            <a href="https://www.dominos.com" target="_blank">Order Now</a>
+        </div>
+        <div class="card" id="item-1">
+            <img src="burger.jpg" alt="Burger">
+            <h3>Burger</h3>
+            <p>$8</p>
+            <a href="https://www.mcdonalds.com" target="_blank">Order Now</a>
+        </div>
+        <div class="card" id="item-2">
+            <img src="pasta.jpg" alt="Pasta">
+            <h3>Pasta</h3>
+            <p>$12</p>
+            <a href="https://www.olivegarden.com" target="_blank">Order Now</a>
+        </div>
+        <div class="card" id="item-3">
+            <img src="salad.jpg" alt="Salad">
+            <h3>Salad</h3>
+            <p>$7</p>
+            <a href="https://www.subway.com" target="_blank">Order Now</a>
+        </div>
+        <div class="card" id="item-4">
+            <img src="sushi.jpg" alt="Sushi">
+            <h3>Sushi</h3>
+            <p>$15</p>
+            <a href="https://www.sushishop.com" target="_blank">Order Now</a>
+        </div>
+        <div class="card" id="item-5">
+            <img src="taco.jpg" alt="Tacos">
+            <h3>Tacos</h3>
+            <p>$9</p>
+            <a href="https://www.tacobell.com" target="_blank">Order Now</a>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
+    <script>
+        const video = document.getElementById('webcam');
+        const container = document.getElementById('foodContainer');
+        const cards = document.querySelectorAll('.card');
+        let activeIndex = 0;
+
+        async function setupCamera() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            return new Promise(resolve => video.onloadedmetadata = resolve);
+        }
+
+        async function detectGesture() {
+            const model = await handpose.load();
+            setInterval(async () => {
+                const predictions = await model.estimateHands(video);
+                if (predictions.length > 0) {
+                    const landmarks = predictions[0].landmarks;
+                    const indexFingerY = landmarks[8][1];
+                    const fistGesture = landmarks[4][0] < landmarks[8][0] && landmarks[4][1] < landmarks[8][1];
+                    const handUp = indexFingerY < 100;
+                    const handDown = indexFingerY > 300;
+
+                    if (handUp) {
+                        changeActiveItem(-1);
+                    } else if (handDown) {
+                        changeActiveItem(1);
+                    } else if (fistGesture) {
+                        openSelectedLink();
+                    }
+                }
+            }, 200);
+        }
+
+        function changeActiveItem(direction) {
+            cards[activeIndex].classList.remove('active');
+            activeIndex += direction;
+            if (activeIndex < 0) activeIndex = 0;
+            if (activeIndex >= cards.length) activeIndex = cards.length - 1;
+            cards[activeIndex].classList.add('active');
+            cards[activeIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function openSelectedLink() {
+            const selectedCard = cards[activeIndex];
+            const link = selectedCard.querySelector('a');
+            if (link) {
+                window.open(link.href, '_blank');
+            }
+        }
+
+        setupCamera().then(detectGesture);
+    </script>
+</body>
+</html>
